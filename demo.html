@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Test</title>
+
+    <script src="dist/cursor-sparkles-wgpu-0.0.1.js"></script>
+    <style>
+        html,
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
+        .middle {
+            background-color: white;
+            max-width: 640px;
+            padding: 0.5em;
+        }
+
+        h1 {
+            font-family: Georgia, 'Times New Roman', Times, serif;
+        }
+
+        .minicanvas {
+            border: 1px dotted black;
+        }
+
+        .banner {
+            text-align: center;
+        }
+
+        .menu-bar {
+            display: flex;
+            justify-items: center;
+            flex-direction: row;
+
+            border-bottom: 1px solid #333;
+            padding-bottom: 0.25em;
+            margin-bottom: 0.25em;
+        }
+
+        @media only screen and (min-width: 640px) {
+
+            html,
+            body {
+                display: flex;
+                align-items: center;
+                background-color: lightgray;
+                flex-direction: column;
+            }
+
+            .middle {
+                background-color: white;
+                width: 640px;
+                padding: 0.5em;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="middle">
+        <div class="banner">
+            <h1>cursor-sparkles-wgpu</h1>
+        </div>
+        <div class="menu-bar">
+            <button id="btn-fullscreen">Full screen</button>
+            <button id="btn-minicanvas">Mini canvas</button>
+        </div>
+        <p>Minicanvas:</p>
+        <canvas id="minicanvas" class="minicanvas" width="320" height="240"></canvas>
+    </div>
+    <script>
+        (() => {
+            let initing = false;
+            let currentSession = null;
+
+            async function tryCancel() {
+                if (initing || currentSession === null) return;
+
+                await currentSession.cancel();
+            }
+
+            document.querySelector('#btn-fullscreen').addEventListener('click', async () => {
+                await tryCancel();
+                initing = true;
+                currentSession = await cursorSparklesWgpu.start();
+                initing = false;
+            });
+
+            document.querySelector('#btn-minicanvas').addEventListener('click', async () => {
+                await tryCancel();
+                initing = true;
+                cursorSparklesWgpu.start({
+                    canvas: document.querySelector('#minicanvas'),
+                });
+                initing = false;
+            });
+        })();
+    </script>
+</body>
+
+</html>
