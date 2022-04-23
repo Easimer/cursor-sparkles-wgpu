@@ -81,6 +81,7 @@
                 if (initing || currentSession === null) return;
 
                 await currentSession.cancel();
+                currentSession = null;
             }
 
             document.querySelector('#btn-fullscreen').addEventListener('click', async () => {
@@ -93,7 +94,7 @@
             document.querySelector('#btn-minicanvas').addEventListener('click', async () => {
                 await tryCancel();
                 initing = true;
-                cursorSparklesWgpu.start({
+                currentSession = await cursorSparklesWgpu.start({
                     canvas: document.querySelector('#minicanvas'),
                 });
                 initing = false;
