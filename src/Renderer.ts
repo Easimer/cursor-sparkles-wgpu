@@ -150,7 +150,19 @@ export class Renderer {
                 module: modShader,
                 entryPoint: 'kFragment',
                 targets: [{
-                    format: 'bgra8unorm'
+                    format: 'bgra8unorm',
+                    blend: {
+                        color: {
+                            operation: 'add',
+                            srcFactor: 'src-alpha',
+                            dstFactor: 'one-minus-src-alpha'
+                        },
+                        alpha: {
+                            operation: 'add',
+                            srcFactor: 'one',
+                            dstFactor: 'zero'
+                        }
+                    }
                 }],
             },
             primitive: {
