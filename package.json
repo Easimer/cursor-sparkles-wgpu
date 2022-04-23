@@ -1,0 +1,24 @@
+{
+  "name": "cursor-sparkles-wgpu",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "ts-node webpack.ts",
+    "watch": "ts-node webpack.ts --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^17.0.24",
+    "@webgpu/types": "^0.1.14",
+    "ts-loader": "^9.2.8",
+    "ts-node": "^10.7.0",
+    "typescript": "^4.6.3",
+    "webpack": "^5.72.0"
+  },
+  "dependencies": {
+    "gl-matrix": "^3.4.3"
+  }
+}
