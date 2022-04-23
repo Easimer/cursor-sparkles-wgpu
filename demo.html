@@ -11,6 +11,7 @@
         body {
             padding: 0;
             margin: 0;
+            background-color: lightgray;
         }
 
         .middle {
@@ -41,13 +42,20 @@
             margin-bottom: 0.25em;
         }
 
+        .console {
+            border: 1px dashed #666;
+            height: 4em;
+            max-height: 4em;
+            overflow-y: scroll;
+            padding-left: 0.25em;
+        }
+
         @media only screen and (min-width: 640px) {
 
             html,
             body {
                 display: flex;
                 align-items: center;
-                background-color: lightgray;
                 flex-direction: column;
             }
 
@@ -71,11 +79,14 @@
         </div>
         <p>Minicanvas:</p>
         <canvas id="minicanvas" class="minicanvas" width="320" height="240"></canvas>
+        <pre id="console" class="console">[Error messages will appear here]
+</pre>
     </div>
     <script>
         (() => {
             let initing = false;
             let currentSession = null;
+            const elemConsole = document.querySelector('#console');
 
             async function tryCancel() {
                 if (initing || currentSession === null) return;
@@ -85,19 +96,29 @@
             }
 
             document.querySelector('#btn-fullscreen').addEventListener('click', async () => {
-                await tryCancel();
-                initing = true;
-                currentSession = await cursorSparklesWgpu.start();
-                initing = false;
+                try {
+                    await tryCancel();
+                    initing = true;
+                    currentSession = await cursorSparklesWgpu.start();
+                } catch (ex) {
+                    elemConsole.innerHTML += ex.toString() + '\n';
+                } finally {
+                    initing = false;
+                }
             });
 
             document.querySelector('#btn-minicanvas').addEventListener('click', async () => {
-                await tryCancel();
-                initing = true;
-                currentSession = await cursorSparklesWgpu.start({
-                    canvas: document.querySelector('#minicanvas'),
-                });
-                initing = false;
+                try {
+                    await tryCancel();
+                    initing = true;
+                    currentSession = await cursorSparklesWgpu.start({
+                        canvas: document.querySelector('#minicanvas'),
+                    });
+                } catch (ex) {
+                    elemConsole.innerHTML += ex.toString() + '\n';
+                } finally {
+                    initing = false;
+                }
             });
         })();
     </script>
