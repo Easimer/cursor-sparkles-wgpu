@@ -2,19 +2,21 @@ import * as webpack from 'webpack';
 import * as path from 'path';
 import { argv } from 'process';
 
-let env = process.env['NODE_ENV'];
-let isProduction =
+import { version } from './package.json';
+
+const env = process.env['NODE_ENV'];
+const isProduction =
     (env && env.match(/production/)) ||
     argv.reduce((prev, cur) => prev || cur === '--production', false);
 
-let config: webpack.Configuration = {
+const config: webpack.Configuration = {
     context: path.join(__dirname, 'src'),
     devtool: 'inline-source-map',
     entry: {
         app: './main.ts'
     },
     output: {
-        filename: 'main.js',
+        filename: `cursor-sparkles-wgpu-${version}.js`,
         path: path.resolve(__dirname, 'dist'),
         library: 'cursorSparklesWgpu'
     },
@@ -56,6 +58,8 @@ let config: webpack.Configuration = {
     },
 };
 
+const TAG = '[cursor-sparkles-wgpu]';
+
 /**
  * Start Build
  */
@@ -67,25 +71,19 @@ if (!argv.reduce((prev, cur) => prev || cur === '--watch', false)) {
         if (!stats) return console.error('stats was undefined');
 
         if (stats.hasErrors()) {
-            let statsJson = stats.toJson();
-            console.log(
-                '❌' + ' · Error · ' + 'webgpu-seed failed to compile:'
-            );
+            console.error(TAG, 'Failed to compile:');
+            const statsJson = stats.toJson();
             if (statsJson && statsJson.errors) {
                 for (let error of statsJson.errors) {
-                    console.log(error.message);
+                    console.error(error.message);
                 }
             }
+
             return;
         }
-        console.log(
-            '✔️️' +
-            '  · Success · ' +
-            'webgpu-seed' +
-            (isProduction ? ' (production) ' : ' (development) ') +
-            'built in ' +
-            (+stats.endTime - +stats.startTime + ' ms.')
-        );
+
+        const timeElapsedMs = stats.endTime - stats.startTime;
+        console.log(TAG, `Built ${isProduction ? 'prod' : 'dev'} in ${timeElapsedMs} ms`);
     });
 } else {
     compiler.watch({}, (err, stats) => {
@@ -93,26 +91,19 @@ if (!argv.reduce((prev, cur) => prev || cur === '--watch', false)) {
         if (!stats) return console.error('stats was undefined');
 
         if (stats.hasErrors()) {
-            let statsJson = stats.toJson();
-            console.log(
-                '❌' + ' · Error · ' + 'webgpu-seed failed to compile:'
-            );
+            console.error(TAG, 'Failed to compile:');
+            const statsJson = stats.toJson();
             if (statsJson && statsJson.errors) {
                 for (let error of statsJson.errors) {
                     console.log(error.message);
                 }
             }
-            console.log('\n👀  · Watching for changes... · \n');
+            console.log(TAG, 'Ready');
             return;
         }
-        console.log(
-            '✔️️' +
-            '  · Success · ' +
-            'webgpu-seed' +
-            (isProduction ? ' (production) ' : ' (development) ') +
-            'built in ' +
-            (+stats.endTime - +stats.startTime + ' ms.') +
-            '\n👀  · Watching for changes... · \n'
-        );
+
+        const timeElapsedMs = stats.endTime - stats.startTime;
+        console.log(TAG, `Built ${isProduction ? 'prod' : 'dev'} in ${timeElapsedMs} ms`);
+        console.log(TAG, 'Ready');
     });
 }
