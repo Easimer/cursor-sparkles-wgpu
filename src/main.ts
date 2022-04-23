@@ -25,7 +25,8 @@ export async function start(opts?: {
 
     const numMaxFramesInFlight = 2;
 
-    const numMaxParticles = opts?.numMaxParticles || 1024;
+    const numMaxParticles = Math.min(opts?.numMaxParticles || 1024, 65535);
+
     const simulator = await Simulator.make(device, queue, numMaxParticles, numMaxFramesInFlight);
 
     let renderer: Renderer;
