@@ -22,7 +22,7 @@ struct ParticleSystem {
 } // @(8 + N * 32)
 
 @group(0) @binding(0) var<storage, read> currState: ParticleSystem;
-@group(0) @binding(1) var<storage, write> drawInfo: array<ParticleDrawInfo>;
+@group(1) @binding(0) var<storage, write> drawInfo: array<ParticleDrawInfo>;
 
 fn rand(x: u32) -> u32 {
     let a: u32 = 0x93d765ddu;

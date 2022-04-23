@@ -57,17 +57,6 @@ async function main() {
             const dy = -ev.clientY - prevMousePos[1];
             simulator.addParticle(ev.clientX, -ev.clientY, 8 * dx, 8 * dy);
             prevMousePos = [ev.clientX, -ev.clientY];
-
-            simulator.addParticle(ev.clientX, -ev.clientY, 8, 0);
-            simulator.addParticle(ev.clientX, -ev.clientY, -8, 0);
-            simulator.addParticle(ev.clientX, -ev.clientY, 0, 8);
-            simulator.addParticle(ev.clientX, -ev.clientY, 0, -8);
-
-            for (let x = -1; x <= 1; x++) {
-                for (let y = -1; y <= 1; y++) {
-                    simulator.addParticle(ev.clientX, -ev.clientY, x * 8, y * 8);
-                }
-            }
         };
     })();
 

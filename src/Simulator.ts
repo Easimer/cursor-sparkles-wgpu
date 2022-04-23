@@ -83,29 +83,21 @@ export class Simulator {
             await this.addQueuedParticles();
             const encoder = this.device.createCommandEncoder();
 
-            const bufUniformsStaging = this.bufferAllocator.getBuffer('uniformsStaging', {
-                size: 4,
-                usage: GPUBufferUsage.COPY_SRC | GPUBufferUsage.MAP_WRITE,
-            });
+            const bufUniformsStaging = this.pipelinePhysicsStep.getUniformStagingBuffer();
 
-            const bufUniforms = this.bufferAllocator.getBuffer('uniforms', {
-                size: 4,
-                usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM,
-            });
-
+            // Copy uniform values into the staging buffer
             await bufUniformsStaging.mapAsync(GPUMapMode.WRITE);
             const arrUniforms = new Float32Array(bufUniformsStaging.getMappedRange());
             arrUniforms[0] = timeStep;
             bufUniformsStaging.unmap();
 
-            encoder.copyBufferToBuffer(bufUniformsStaging, 0, bufUniforms, 0, 4);
-
-            this.pipelinePhysicsStep.setUniformBuffer(bufUniforms);
+            this.pipelinePhysicsStep.commitUniformBuffer(encoder);
 
             this.pipelinePhysicsStep.dispatch(encoder, this.numMaxParticles);
             const buffer = encoder.finish();
             this.queue.submit([buffer]);
 
+            this.pipelinePhysicsStep.advanceFrame();
             resolve();
         }));
 
@@ -118,11 +110,12 @@ export class Simulator {
             size: this.numMaxParticles * SIZ_DRAWINFO,
             usage: GPUBufferUsage.STORAGE,
         });
-        this.pipelineGenDrawInfo.setBuffers(this.buffers[this.pipelinePhysicsStep.getCurrentBufferIndex()], bufDrawInfo);
+        this.pipelineGenDrawInfo.setBuffers(bufDrawInfo);
 
         this.pipelineGenDrawInfo.dispatch(encoder, this.numMaxParticles);
         const buffer = encoder.finish();
         this.queue.submit([buffer]);
+        this.pipelineGenDrawInfo.advanceFrame();
         return bufDrawInfo;
     }
 
@@ -177,6 +170,8 @@ export class Simulator {
             code: programGenDrawInfo,
         });
         const pipelineGenDrawInfo = await PipelineGenerateDrawInfo.make(device, queue, moduleGen);
+
+        pipelineGenDrawInfo.setSystemStateBuffers([buffer0, buffer1]);
 
         return new Simulator(device, queue, pipelinePhysicsStep, pipelineGenDrawInfo, numMaxParticles, [buffer0, buffer1], bufferAllocator);
     }

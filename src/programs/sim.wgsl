@@ -16,7 +16,7 @@ struct Uniforms {
     timeStep: f32, // @0
 } // @4
 
-let LIFETIME_SPEED = 0.25;
+let LIFETIME_SPEED = 0.50;
 let SCALE_GROW_SPEED = 1.00;
 
 @group(0) @binding(0) var<storage, read> currState: ParticleSystem;

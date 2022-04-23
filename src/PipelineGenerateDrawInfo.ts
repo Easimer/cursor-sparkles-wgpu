@@ -1,21 +1,28 @@
 import { Pipeline } from './Pipeline';
 
 export class PipelineGenerateDrawInfo extends Pipeline {
-    private bindGroup0: GPUBindGroup | null = null;
-    private bindLayout: GPUBindGroupLayout;
+    private bindLayoutInput: GPUBindGroupLayout;
+    private bindLayoutOutput: GPUBindGroupLayout;
+
+    private bindGroupsInput: GPUBindGroup[] = [];
+    private bindGroupOutput: GPUBindGroup | null = null;
+
+    private nextFrameIndex = 0;
 
     constructor(args: {
         device: GPUDevice,
         queue: GPUQueue,
         pipeline: GPUComputePipeline,
-        bindLayout: GPUBindGroupLayout,
+        bindLayoutInput: GPUBindGroupLayout,
+        bindLayoutOutput: GPUBindGroupLayout,
     }) {
         super(args.device, args.queue, args.pipeline);
-        this.bindLayout = args.bindLayout;
+        this.bindLayoutInput = args.bindLayoutInput;
+        this.bindLayoutOutput = args.bindLayoutOutput;
     }
 
     static async make(device: GPUDevice, queue: GPUQueue, module: GPUShaderModule) {
-        const bindLayout = device.createBindGroupLayout({
+        const bindLayoutInput = device.createBindGroupLayout({
             entries: [
                 {
                     binding: 0,
@@ -24,8 +31,12 @@ export class PipelineGenerateDrawInfo extends Pipeline {
                         type: 'read-only-storage',
                     },
                 },
+            ]
+        });
+        const bindLayoutOutput = device.createBindGroupLayout({
+            entries: [
                 {
-                    binding: 1,
+                    binding: 0,
                     visibility: GPUShaderStage.COMPUTE,
                     buffer: {
                         type: 'storage',
@@ -40,37 +51,66 @@ export class PipelineGenerateDrawInfo extends Pipeline {
                 entryPoint: 'kGenDrawInfo',
             },
             layout: device.createPipelineLayout({
-                bindGroupLayouts: [bindLayout],
+                bindGroupLayouts: [bindLayoutInput, bindLayoutOutput],
             }),
         });
 
         return new PipelineGenerateDrawInfo({
-            device, queue, pipeline, bindLayout,
+            device, queue, pipeline, bindLayoutInput, bindLayoutOutput,
         });
     }
 
     setBindGroups(pass: GPUComputePassEncoder): void {
-        pass.setBindGroup(0, this.bindGroup0);
+        if (!this.bindGroupOutput) throw new Error('Output bind group doesn\'t exist');
+        if (this.bindGroupsInput.length < 2) throw new Error('Input bind groups don\'t exist');
+
+        pass.setBindGroup(0, this.bindGroupsInput[this.nextFrameIndex]);
+        pass.setBindGroup(1, this.bindGroupOutput);
     }
 
-    setBuffers(bufferState: GPUBuffer, bufferDrawInfo: GPUBuffer) {
-        // TODO: try breaking this bind group up and cache the first one
-        this.bindGroup0 = this.device.createBindGroup({
-            layout: this.bindLayout,
+    setSystemStateBuffers(buffers: [GPUBuffer, GPUBuffer]) {
+        const bindGroup0 = this.device.createBindGroup({
+            layout: this.bindLayoutInput,
             entries: [
                 {
                     binding: 0,
                     resource: {
-                        buffer: bufferState
+                        buffer: buffers[0]
                     }
                 },
+            ]
+        });
+        const bindGroup1 = this.device.createBindGroup({
+            layout: this.bindLayoutInput,
+            entries: [
                 {
-                    binding: 1,
+                    binding: 0,
+                    resource: {
+                        buffer: buffers[1]
+                    }
+                },
+            ]
+        });
+        this.bindGroupsInput = [bindGroup0, bindGroup1];
+    }
+
+    setBuffers(bufferDrawInfo: GPUBuffer) {
+        this.bindGroupOutput = this.device.createBindGroup({
+            layout: this.bindLayoutOutput,
+            entries: [
+                {
+                    binding: 0,
                     resource: {
                         buffer: bufferDrawInfo
                     }
                 },
             ]
         });
+    }
+
+    advanceFrame() {
+        const idxFrame = this.nextFrameIndex;
+        const idxNextFrame = idxFrame === 0 ? 1 : 0;
+        this.nextFrameIndex = idxNextFrame;
     }
 }

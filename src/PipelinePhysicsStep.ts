@@ -1,24 +1,29 @@
 import { Pipeline } from "./Pipeline";
 
 export class PipelinePhysicsStep extends Pipeline {
-    private bindGroup0: GPUBindGroup | null = null;
-    private bindGroup1: GPUBindGroup | null = null;
-    private bindGroupUniforms: GPUBindGroup | null = null;
-    private nextBindGroup = 0;
+    private bindGroups: GPUBindGroup[] = [];
+    private nextFrameIndex = 0;
     private bindLayoutState: GPUBindGroupLayout;
-    private bindLayoutUniforms: GPUBindGroupLayout;
+
+    private uniformBindGroups: GPUBindGroup[];
+    private uniformBuffers: GPUBuffer[];
+    private uniformStagingBuffers: GPUBuffer[];
 
     protected constructor(args: {
         device: GPUDevice;
         queue: GPUQueue;
         pipeline: GPUComputePipeline;
         bindLayoutState: GPUBindGroupLayout;
-        bindLayoutUniforms: GPUBindGroupLayout;
+        uniformBindGroups: GPUBindGroup[];
+        uniformBuffers: GPUBuffer[];
+        uniformStagingBuffers: GPUBuffer[];
     }) {
         super(args.device, args.queue, args.pipeline);
 
         this.bindLayoutState = args.bindLayoutState;
-        this.bindLayoutUniforms = args.bindLayoutUniforms;
+        this.uniformBindGroups = args.uniformBindGroups;
+        this.uniformBuffers = args.uniformBuffers;
+        this.uniformStagingBuffers = args.uniformStagingBuffers;
     }
 
     static async make(device: GPUDevice, queue: GPUQueue, module: GPUShaderModule) {
@@ -63,28 +68,36 @@ export class PipelinePhysicsStep extends Pipeline {
             }),
         });
 
-        return new PipelinePhysicsStep({
-            device, queue, pipeline, bindLayoutState, bindLayoutUniforms,
-        });
-    }
+        const uniformBuffers = [0, 0].map(() => device.createBuffer({
+            size: 4,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM,
+        }));
 
-    setUniformBuffer(buffer: GPUBuffer) {
-        // TODO: cache this bind group (reuse uniform buffers)
-        this.bindGroupUniforms = this.device.createBindGroup({
-            layout: this.bindLayoutUniforms,
-            entries: [
-                {
-                    binding: 0,
-                    resource: {
-                        buffer: buffer,
-                    },
-                }
-            ],
+        const uniformStagingBuffers = [0, 0].map(() => device.createBuffer({
+            size: 4,
+            usage: GPUBufferUsage.COPY_SRC | GPUBufferUsage.MAP_WRITE,
+        }));
+
+        const uniformBindGroups = [0, 0].map((_, i) =>
+            device.createBindGroup({
+                layout: bindLayoutUniforms,
+                entries: [
+                    {
+                        binding: 0,
+                        resource: {
+                            buffer: uniformBuffers[i],
+                        },
+                    }
+                ],
+            }));
+
+        return new PipelinePhysicsStep({
+            device, queue, pipeline, bindLayoutState, uniformBuffers, uniformStagingBuffers, uniformBindGroups,
         });
     }
 
     setSystemStateBuffers(buffers: [GPUBuffer, GPUBuffer]) {
-        this.bindGroup0 = this.device.createBindGroup({
+        const bindGroup0 = this.device.createBindGroup({
             layout: this.bindLayoutState,
             entries: [
                 {
@@ -102,7 +115,7 @@ export class PipelinePhysicsStep extends Pipeline {
             ]
         });
 
-        this.bindGroup1 = this.device.createBindGroup({
+        const bindGroup1 = this.device.createBindGroup({
             layout: this.bindLayoutState,
             entries: [
                 {
@@ -119,27 +132,35 @@ export class PipelinePhysicsStep extends Pipeline {
                 },
             ]
         });
-    }
 
-    getBindGroup() {
-        if (!this.bindGroup0 || !this.bindGroup1)
-            throw new Error('No bind groups');
-
-        if (this.nextBindGroup === 0) {
-            this.nextBindGroup = 1;
-            return this.bindGroup0;
-        } else {
-            this.nextBindGroup = 0;
-            return this.bindGroup1;
-        }
+        this.bindGroups = [bindGroup0, bindGroup1];
     }
 
     getCurrentBufferIndex() {
-        return this.nextBindGroup;
+        return this.nextFrameIndex;
     }
 
     setBindGroups(pass: GPUComputePassEncoder) {
-        pass.setBindGroup(0, this.getBindGroup());
-        pass.setBindGroup(1, this.bindGroupUniforms);
+        if (this.bindGroups.length < 2)
+            throw new Error('State bind groups missing');
+
+        const idxFrame = this.nextFrameIndex;
+        pass.setBindGroup(0, this.bindGroups[idxFrame]);
+        pass.setBindGroup(1, this.uniformBindGroups[idxFrame]);
+    }
+
+    getUniformStagingBuffer(): GPUBuffer {
+        return this.uniformStagingBuffers[this.nextFrameIndex];
+    }
+
+    commitUniformBuffer(encoder: GPUCommandEncoder) {
+        const i = this.nextFrameIndex;
+        encoder.copyBufferToBuffer(this.uniformStagingBuffers[i], 0, this.uniformBuffers[i], 0, 4);
+    }
+
+    advanceFrame() {
+        const idxFrame = this.nextFrameIndex;
+        const idxNextFrame = idxFrame === 0 ? 1 : 0;
+        this.nextFrameIndex = idxNextFrame;
     }
 }
