@@ -17,7 +17,6 @@ export class BufferAllocator {
 
     getBuffer(name: string, descriptor: GPUBufferDescriptor): GPUBuffer {
         if (!(name in this.bufferLists)) {
-            console.log('allocating buffer set', name);
             this.bufferLists[name] = Array.from(new Array(this.maxFramesInFlight)).map(x => this.device.createBuffer(descriptor));
 
             console.log(this.bufferLists);

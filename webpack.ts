@@ -15,7 +15,8 @@ let config: webpack.Configuration = {
     },
     output: {
         filename: 'main.js',
-        path: path.resolve(__dirname, 'dist')
+        path: path.resolve(__dirname, 'dist'),
+        library: 'cursorSparklesWgpu'
     },
     resolve: {
         extensions: ['.ts', '.tsx', 'js'],

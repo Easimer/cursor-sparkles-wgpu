@@ -1,6 +1,6 @@
-import { Pipeline } from "./Pipeline";
+import { Pass } from "./Pass";
 
-export class PipelinePhysicsStep extends Pipeline {
+export class PassPhysicsStep extends Pass {
     private bindGroups: GPUBindGroup[] = [];
     private nextFrameIndex = 0;
     private bindLayoutState: GPUBindGroupLayout;
@@ -91,7 +91,7 @@ export class PipelinePhysicsStep extends Pipeline {
                 ],
             }));
 
-        return new PipelinePhysicsStep({
+        return new PassPhysicsStep({
             device, queue, pipeline, bindLayoutState, uniformBuffers, uniformStagingBuffers, uniformBindGroups,
         });
     }

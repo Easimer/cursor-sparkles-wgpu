@@ -1,4 +1,4 @@
-export abstract class Pipeline {
+export abstract class Pass {
     protected constructor(
         protected device: GPUDevice,
         private queue: GPUQueue,

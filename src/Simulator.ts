@@ -1,7 +1,7 @@
 import * as programSimulation from './programs/sim.wgsl';
 import * as programGenDrawInfo from './programs/gendrawinfo.wgsl';
-import { PipelinePhysicsStep } from './PipelinePhysicsStep';
-import { PipelineGenerateDrawInfo } from './PipelineGenerateDrawInfo';
+import { PassPhysicsStep } from './PassPhysicsStep';
+import { PassGenerateDrawInfo } from './PassGenerateDrawInfo';
 import { BufferAllocator } from './BufferAllocator';
 import { SIZ_PARTICLE, LEN_PARTICLE, computeParticleSystemSize, offsetOfParticle, SIZ_DRAWINFO } from './Sizes';
 
@@ -15,8 +15,8 @@ export class Simulator {
     protected constructor(
         private device: GPUDevice,
         private queue: GPUQueue,
-        private pipelinePhysicsStep: PipelinePhysicsStep,
-        private pipelineGenDrawInfo: PipelineGenerateDrawInfo,
+        private pipelinePhysicsStep: PassPhysicsStep,
+        private pipelineGenDrawInfo: PassGenerateDrawInfo,
         private numMaxParticles: number,
         private buffers: [GPUBuffer, GPUBuffer],
         private bufferAllocator: BufferAllocator) {
@@ -145,7 +145,7 @@ export class Simulator {
         const module = device.createShaderModule({
             code: programSimulation,
         });
-        const pipelinePhysicsStep = await PipelinePhysicsStep.make(device, queue, module);
+        const pipelinePhysicsStep = await PassPhysicsStep.make(device, queue, module);
 
 
         const lenBuffer = computeParticleSystemSize(numMaxParticles);
@@ -169,7 +169,7 @@ export class Simulator {
         const moduleGen = device.createShaderModule({
             code: programGenDrawInfo,
         });
-        const pipelineGenDrawInfo = await PipelineGenerateDrawInfo.make(device, queue, moduleGen);
+        const pipelineGenDrawInfo = await PassGenerateDrawInfo.make(device, queue, moduleGen);
 
         pipelineGenDrawInfo.setSystemStateBuffers([buffer0, buffer1]);
 

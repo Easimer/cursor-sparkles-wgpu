@@ -1,6 +1,6 @@
-import { Pipeline } from './Pipeline';
+import { Pass } from './Pass';
 
-export class PipelineGenerateDrawInfo extends Pipeline {
+export class PassGenerateDrawInfo extends Pass {
     private bindLayoutInput: GPUBindGroupLayout;
     private bindLayoutOutput: GPUBindGroupLayout;
 
@@ -55,7 +55,7 @@ export class PipelineGenerateDrawInfo extends Pipeline {
             }),
         });
 
-        return new PipelineGenerateDrawInfo({
+        return new PassGenerateDrawInfo({
             device, queue, pipeline, bindLayoutInput, bindLayoutOutput,
         });
     }

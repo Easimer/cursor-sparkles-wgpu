@@ -16,14 +16,17 @@ export class Renderer {
     }
 
     canvasResized() {
-        console.log('resized');
         const canvasCfg: GPUCanvasConfiguration = {
             device: this.device,
             format: 'bgra8unorm',
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
             compositingAlphaMode: 'premultiplied',
         };
-        this.ctx = this.canvas.getContext('webgpu');
+        const ctx = this.canvas.getContext('webgpu');
+        if (!ctx) {
+            throw new Error('Couldn\'t get canvas ctx');
+        }
+        this.ctx = ctx;
         this.ctx.configure(canvasCfg);
     }
 

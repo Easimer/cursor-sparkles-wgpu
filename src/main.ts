@@ -4,7 +4,10 @@ import { Renderer } from './Renderer';
 import { BufferAllocator } from './BufferAllocator';
 import { Simulator } from './Simulator';
 
-async function main() {
+export async function start(opts?: {
+    canvas?: HTMLCanvasElement;
+    numMaxParticles?: number;
+}) {
     const gpu = navigator.gpu;
 
     if (!gpu) {
@@ -22,29 +25,38 @@ async function main() {
 
     const bufferAllocator = new BufferAllocator(device, 2);
 
-    const NUM_PARTICLES = 8192;
-    const simulator = await Simulator.make(device, queue, NUM_PARTICLES, bufferAllocator);
+    const numMaxParticles = opts?.numMaxParticles || 1024;
+    const simulator = await Simulator.make(device, queue, numMaxParticles, bufferAllocator);
 
-    const elemCanvas = document.createElement('canvas');
-    elemCanvas.style.width = '100vw';
-    elemCanvas.style.height = '100vh';
-    elemCanvas.style.pointerEvents = 'none';
-    elemCanvas.style.position = 'absolute';
-    elemCanvas.style.top = elemCanvas.style.left = '0';
-    document.body.appendChild(elemCanvas);
+    let renderer: Renderer;
 
-    const renderer = await Renderer.make(device, elemCanvas, queue, bufferAllocator);
+    let elemCanvas = opts?.canvas;
+    if (!elemCanvas) {
+        elemCanvas = document.createElement('canvas');
+        elemCanvas.style.width = '100vw';
+        elemCanvas.style.height = '100vh';
+        elemCanvas.style.pointerEvents = 'none';
+        elemCanvas.style.position = 'absolute';
+        elemCanvas.style.top = elemCanvas.style.left = '0';
+        document.body.appendChild(elemCanvas);
 
-    const ro = new ResizeObserver(entries => {
-        if (entries.length < 0) return;
-        const ent = entries[0];
-        elemCanvas.width = ent.contentRect.width;
-        elemCanvas.height = ent.contentRect.height;
+        const c = elemCanvas;
 
-        renderer.canvasResized();
-    });
+        const ro = new ResizeObserver(entries => {
+            if (entries.length < 0) return;
+            const ent = entries[0];
+            c.width = ent.contentRect.width;
+            c.height = ent.contentRect.height;
 
-    ro.observe(elemCanvas);
+            if (renderer) {
+                renderer.canvasResized();
+            }
+        });
+
+        ro.observe(elemCanvas);
+    }
+
+    renderer = await Renderer.make(device, elemCanvas, queue, bufferAllocator);
 
     const handler = (() => {
         let prevMousePos: [number, number] | null = null;
@@ -64,6 +76,9 @@ async function main() {
 
     let prevTime: number | null = null;
 
+    let shutdown = false;
+    let shutdownCb: (() => void) | null = null;
+
     async function step(time: number) {
         if (!prevTime) {
             prevTime = time;
@@ -74,14 +89,34 @@ async function main() {
         const delta = (time - prevTime) / 1000.0;
         await simulator.step(delta);
         const drawInfo = await simulator.getDrawInfo();
-        await renderer.step(NUM_PARTICLES, drawInfo);
+        await renderer.step(numMaxParticles, drawInfo);
         bufferAllocator.advanceFrame(queue.onSubmittedWorkDone());
-        requestAnimationFrame(step);
+
+        if (!shutdown) {
+            requestAnimationFrame(step);
+        } else {
+            if (shutdownCb) {
+                shutdownCb();
+            }
+        }
 
         prevTime = time;
     }
 
     requestAnimationFrame(step);
-}
 
-main();
+    return new class {
+        cancel(): Promise<void> {
+            shutdown = true;
+
+            return new Promise<void>(resolve => {
+                shutdownCb = resolve;
+            });
+        }
+
+        addParticle(px: number, py: number, vx: number, vy: number) {
+            if (shutdown) throw new Error('Already shutdown');
+            simulator.addParticle(px, py, vx, vy);
+        }
+    };
+}
