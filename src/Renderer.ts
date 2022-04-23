@@ -2,6 +2,10 @@ import { BufferAllocator } from './BufferAllocator';
 import * as shaders from './programs/render.wgsl';
 import { QuadMesh } from './QuadMesh';
 
+enum Buffer {
+    UNIFORMS,
+}
+
 export class Renderer {
     private ctx: GPUCanvasContext;
 
@@ -11,7 +15,7 @@ export class Renderer {
         private pipeline: GPURenderPipeline,
         private canvas: HTMLCanvasElement,
         private quad: QuadMesh,
-        private bufferAllocator: BufferAllocator) {
+        private bufferAllocator: BufferAllocator<Buffer>) {
         this.canvasResized();
     }
 
@@ -45,7 +49,7 @@ export class Renderer {
             }],
         });
 
-        const bufUniforms = this.bufferAllocator.getBuffer('renderUniforms', {
+        const bufUniforms = this.bufferAllocator.getBuffer(Buffer.UNIFORMS, {
             size: 64,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
@@ -87,13 +91,15 @@ export class Renderer {
         const cmdbuf = encoder.finish();
 
         this.queue.submit([cmdbuf]);
+
+        this.bufferAllocator.advanceFrame(Promise.resolve());
     }
 
     static async make(
         device: GPUDevice,
         canvas: HTMLCanvasElement,
         queue: GPUQueue,
-        bufferAllocator: BufferAllocator
+        numMaxFramesInFlight: number
     ): Promise<Renderer> {
         console.debug('Renderer::make', 'Configuring canvas');
 
@@ -172,6 +178,8 @@ export class Renderer {
             },
             layout,
         });
+
+        const bufferAllocator = new BufferAllocator<Buffer>(device, numMaxFramesInFlight);
 
         console.debug('Renderer::make', 'Done');
         return new Renderer(device, queue, pipeline, canvas, await QuadMesh.make(device, queue), bufferAllocator);

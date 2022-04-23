@@ -1,6 +1,5 @@
-export class BufferAllocator {
-    // TODO: replace string IDs with enums
-    private bufferLists: Record<string, GPUBuffer[]> = {};
+export class BufferAllocator<T extends number> {
+    private bufferLists: Record<T, GPUBuffer[]> = [];
     private idxFrame = 0;
     private frameEndedPromises: Array<Promise<void>>;
 
@@ -15,11 +14,9 @@ export class BufferAllocator {
         this.idxFrame = idxNextFrame;
     }
 
-    getBuffer(name: string, descriptor: GPUBufferDescriptor): GPUBuffer {
+    getBuffer(name: T, descriptor: GPUBufferDescriptor): GPUBuffer {
         if (!(name in this.bufferLists)) {
             this.bufferLists[name] = Array.from(new Array(this.maxFramesInFlight)).map(x => this.device.createBuffer(descriptor));
-
-            console.log(this.bufferLists);
         }
 
         return this.bufferLists[name][this.idxFrame];

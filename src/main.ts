@@ -1,7 +1,6 @@
 /// <reference types="@webgpu/types" />
 
 import { Renderer } from './Renderer';
-import { BufferAllocator } from './BufferAllocator';
 import { Simulator } from './Simulator';
 import { MaybeOwnedElement } from './MaybeOwnedElement';
 
@@ -24,10 +23,10 @@ export async function start(opts?: {
     });
     const queue = device.queue;
 
-    const bufferAllocator = new BufferAllocator(device, 2);
+    const numMaxFramesInFlight = 2;
 
     const numMaxParticles = opts?.numMaxParticles || 1024;
-    const simulator = await Simulator.make(device, queue, numMaxParticles, bufferAllocator);
+    const simulator = await Simulator.make(device, queue, numMaxParticles, numMaxFramesInFlight);
 
     let renderer: Renderer;
 
@@ -58,7 +57,7 @@ export async function start(opts?: {
         ro.observe(elem);
     }
 
-    renderer = await Renderer.make(device, elemCanvas.element, queue, bufferAllocator);
+    renderer = await Renderer.make(device, elemCanvas.element, queue, numMaxFramesInFlight);
 
     const handler = (() => {
         let prevMousePos: [number, number] | null = null;
@@ -98,7 +97,6 @@ export async function start(opts?: {
         await simulator.step(delta);
         const drawInfo = await simulator.getDrawInfo();
         await renderer.step(numMaxParticles, drawInfo);
-        bufferAllocator.advanceFrame(queue.onSubmittedWorkDone());
 
         if (!shutdown) {
             requestAnimationFrame(step);

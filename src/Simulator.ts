@@ -5,10 +5,13 @@ import { PassGenerateDrawInfo } from './PassGenerateDrawInfo';
 import { BufferAllocator } from './BufferAllocator';
 import { SIZ_PARTICLE, LEN_PARTICLE, computeParticleSystemSize, offsetOfParticle, SIZ_DRAWINFO } from './Sizes';
 
+enum Buffer {
+    DRAW_INFO
+}
+
 export class Simulator {
     private idxNextParticle = 0;
     private prevFrameFinished = Promise.resolve();
-    private idxStep = 0;
 
     private particleCreationQueue: Array<Float32Array> = [];
 
@@ -19,7 +22,7 @@ export class Simulator {
         private pipelineGenDrawInfo: PassGenerateDrawInfo,
         private numMaxParticles: number,
         private buffers: [GPUBuffer, GPUBuffer],
-        private bufferAllocator: BufferAllocator) {
+        private bufferAllocator: BufferAllocator<Buffer>) {
     }
 
     private async addQueuedParticles() {
@@ -64,9 +67,6 @@ export class Simulator {
 
         this.queue.submit([encoder.finish()]);
         stagingBuffers.forEach(buf => buf.destroy());
-        //this.queue.onSubmittedWorkDone().then(() => {
-        //    stagingBuffers.forEach(buf => buf.destroy());
-        //});
     }
 
     async addParticle(px: number, py: number, vx: number, vy: number) {
@@ -75,8 +75,6 @@ export class Simulator {
     }
 
     async step(timeStep: number) {
-        const idxCurrentStep = this.idxStep;
-        this.idxStep++;
         await this.prevFrameFinished;
 
         this.prevFrameFinished = new Promise<void>((async (resolve) => {
@@ -98,6 +96,7 @@ export class Simulator {
             this.queue.submit([buffer]);
 
             this.pipelinePhysicsStep.advanceFrame();
+            this.bufferAllocator.advanceFrame(this.prevFrameFinished);
             resolve();
         }));
 
@@ -106,7 +105,7 @@ export class Simulator {
 
     async getDrawInfo() {
         const encoder = this.device.createCommandEncoder();
-        const bufDrawInfo = this.bufferAllocator.getBuffer('drawInfo', {
+        const bufDrawInfo = this.bufferAllocator.getBuffer(Buffer.DRAW_INFO, {
             size: this.numMaxParticles * SIZ_DRAWINFO,
             usage: GPUBufferUsage.STORAGE,
         });
@@ -141,7 +140,7 @@ export class Simulator {
         return [ret0];
     }
 
-    static async make(device: GPUDevice, queue: GPUQueue, numMaxParticles: number, bufferAllocator: BufferAllocator) {
+    static async make(device: GPUDevice, queue: GPUQueue, numMaxParticles: number, numMaxFramesInFlight: number) {
         const module = device.createShaderModule({
             code: programSimulation,
         });
@@ -172,6 +171,8 @@ export class Simulator {
         const pipelineGenDrawInfo = await PassGenerateDrawInfo.make(device, queue, moduleGen);
 
         pipelineGenDrawInfo.setSystemStateBuffers([buffer0, buffer1]);
+
+        const bufferAllocator = new BufferAllocator<Buffer>(device, numMaxFramesInFlight);
 
         return new Simulator(device, queue, pipelinePhysicsStep, pipelineGenDrawInfo, numMaxParticles, [buffer0, buffer1], bufferAllocator);
     }
