@@ -76,6 +76,9 @@
         <div class="menu-bar">
             <button id="btn-fullscreen">Full screen</button>
             <button id="btn-minicanvas">Mini canvas</button>
+            &bull;
+            <label for="cfg-particle-count">Max particle count:</label>
+            <input type="number" id="cfg-particle-count" value="1024" />
         </div>
         <p>Minicanvas:</p>
         <canvas id="minicanvas" class="minicanvas" width="320" height="240"></canvas>
@@ -95,11 +98,17 @@
                 currentSession = null;
             }
 
+            function getNumMaxParticles() {
+                return Number(document.querySelector('#cfg-particle-count').value);
+            }
+
             document.querySelector('#btn-fullscreen').addEventListener('click', async () => {
                 try {
                     await tryCancel();
                     initing = true;
-                    currentSession = await cursorSparklesWgpu.start();
+                    currentSession = await cursorSparklesWgpu.start({
+                        numMaxParticles: getNumMaxParticles(),
+                    });
                 } catch (ex) {
                     elemConsole.innerHTML += ex.toString() + '\n';
                 } finally {
@@ -112,6 +121,7 @@
                     await tryCancel();
                     initing = true;
                     currentSession = await cursorSparklesWgpu.start({
+                        numMaxParticles: getNumMaxParticles(),
                         canvas: document.querySelector('#minicanvas'),
                     });
                 } catch (ex) {
