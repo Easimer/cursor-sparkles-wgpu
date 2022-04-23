@@ -11,7 +11,7 @@ const isProduction =
 
 const config: webpack.Configuration = {
     context: path.join(__dirname, 'src'),
-    devtool: 'inline-source-map',
+    devtool: isProduction ? false : 'inline-source-map',
     entry: {
         app: './main.ts'
     },
