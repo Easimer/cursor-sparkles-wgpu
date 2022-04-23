@@ -72,9 +72,17 @@ export async function start(opts?: {
             // Compute cursor position relative to the canvas
             const posCursorX = ev.clientX - posCanvasX;
             const posCursorY = -(ev.clientY - posCanvasY);
+
             const deltaX = posCursorX - prevMousePos[0];
             const deltaY = posCursorY - prevMousePos[1];
-            simulator.addParticle(posCursorX, posCursorY, 8 * deltaX, 8 * deltaY);
+
+            const ANGLE = 90 / 180 * Math.PI;
+            for (let i = 0; i < 4; i++) {
+                const ang = Math.PI - ANGLE / 2 + ANGLE * Math.random();
+                const vx = Math.cos(ang) * deltaX - Math.sin(ang) * deltaY;
+                const vy = Math.sin(ang) * deltaX + Math.cos(ang) * deltaY;
+                simulator.addParticle(posCursorX, posCursorY, 16 * vx, 16 * vy);
+            }
             prevMousePos = [posCursorX, posCursorY];
         };
     })();
