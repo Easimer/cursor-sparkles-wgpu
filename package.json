@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "ts-node webpack.ts",
-    "watch": "ts-node webpack.ts --watch",
+    "build": "ts-node webpack.config.ts",
+    "watch": "ts-node webpack.config.ts --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
