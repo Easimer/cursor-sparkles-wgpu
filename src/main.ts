@@ -3,6 +3,7 @@
 import { Renderer } from './Renderer';
 import { BufferAllocator } from './BufferAllocator';
 import { Simulator } from './Simulator';
+import { MaybeOwnedElement } from './MaybeOwnedElement';
 
 export async function start(opts?: {
     canvas?: HTMLCanvasElement;
@@ -30,33 +31,34 @@ export async function start(opts?: {
 
     let renderer: Renderer;
 
-    let elemCanvas = opts?.canvas;
-    if (!elemCanvas) {
-        elemCanvas = document.createElement('canvas');
-        elemCanvas.style.width = '100vw';
-        elemCanvas.style.height = '100vh';
-        elemCanvas.style.pointerEvents = 'none';
-        elemCanvas.style.position = 'absolute';
-        elemCanvas.style.top = elemCanvas.style.left = '0';
-        document.body.appendChild(elemCanvas);
-
-        const c = elemCanvas;
+    let elemCanvas: MaybeOwnedElement<HTMLCanvasElement>;
+    if (opts && opts.canvas) {
+        elemCanvas = new MaybeOwnedElement(opts.canvas, false);
+    } else {
+        const elem = document.createElement('canvas');
+        elem.style.width = '100vw';
+        elem.style.height = '100vh';
+        elem.style.pointerEvents = 'none';
+        elem.style.position = 'absolute';
+        elem.style.top = elem.style.left = '0';
+        document.body.appendChild(elem);
+        elemCanvas = new MaybeOwnedElement(elem, true);
 
         const ro = new ResizeObserver(entries => {
             if (entries.length < 0) return;
             const ent = entries[0];
-            c.width = ent.contentRect.width;
-            c.height = ent.contentRect.height;
+            elem.width = ent.contentRect.width;
+            elem.height = ent.contentRect.height;
 
             if (renderer) {
                 renderer.canvasResized();
             }
         });
 
-        ro.observe(elemCanvas);
+        ro.observe(elem);
     }
 
-    renderer = await Renderer.make(device, elemCanvas, queue, bufferAllocator);
+    renderer = await Renderer.make(device, elemCanvas.element, queue, bufferAllocator);
 
     const handler = (() => {
         let prevMousePos: [number, number] | null = null;
@@ -65,10 +67,16 @@ export async function start(opts?: {
                 prevMousePos = [ev.clientX, -ev.clientY];
             }
 
-            const dx = ev.clientX - prevMousePos[0];
-            const dy = -ev.clientY - prevMousePos[1];
-            simulator.addParticle(ev.clientX, -ev.clientY, 8 * dx, 8 * dy);
-            prevMousePos = [ev.clientX, -ev.clientY];
+            let posCanvasX = elemCanvas.element.offsetLeft;
+            let posCanvasY = elemCanvas.element.offsetTop;
+
+            // Compute cursor position relative to the canvas
+            const posCursorX = ev.clientX - posCanvasX;
+            const posCursorY = -(ev.clientY - posCanvasY);
+            const deltaX = posCursorX - prevMousePos[0];
+            const deltaY = posCursorY - prevMousePos[1];
+            simulator.addParticle(posCursorX, posCursorY, 8 * deltaX, 8 * deltaY);
+            prevMousePos = [posCursorX, posCursorY];
         };
     })();
 
@@ -95,6 +103,7 @@ export async function start(opts?: {
         if (!shutdown) {
             requestAnimationFrame(step);
         } else {
+            elemCanvas.release();
             if (shutdownCb) {
                 shutdownCb();
             }
